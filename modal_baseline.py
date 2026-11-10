@@ -82,7 +82,8 @@ def start_server(port=30000, ctx=16384, max_running=64, extra=()):
 @app.function(image=image, gpu=GPU, cpu=8, memory=32768, volumes={"/hf": weights, "/results": results},
               timeout=60 * 60 * 4)
 def run(name: str, dataset: str = "musique", limit: int = 10, offset: int = 0, expansions: int = 2,
-        concurrency: int = 16, batch: int = 64, max_running: int = 64, ctx: int = 16384, server_extra: str = ""):
+        concurrency: int = 16, batch: int = 64, max_running: int = 64, ctx: int = 16384, server_extra: str = "",
+        dataset_dir: str = ""):
     t_container = time.time()
     smi = subprocess.run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
                          capture_output=True, text=True).stdout.strip()
@@ -101,26 +102,36 @@ def run(name: str, dataset: str = "musique", limit: int = 10, offset: int = 0, e
            "freeze": open("/opt/upstream/freeze.txt").read().split()}
     print(json.dumps({k: v for k, v in env.items() if k != "freeze"}), flush=True)
     try:
-        suite = f"{out}/run"
-        cmd = [".venv/bin/python", "-W", "ignore", "scripts/run_sag2_benchmark.py", "--mode", "local",
-               "--reranker", "jevlike", "--model-path", f"/hf/{FP8_REPO}", "--dataset", dataset,
-               "--offset", str(offset), "--limit", str(limit), "--expansions", str(expansions),
-               "--concurrency", str(concurrency), "--batch-size", str(batch), "--timeout", "1800"]
-        cmd += ["--resume", suite] if os.path.isdir(suite) else ["--output-dir", suite]
+        # dataset may be "musique:300,2wikimultihopqa:100" to run several question sets on one warm server
+        specs = [(part.split(":")[0], int(part.split(":")[1]) if ":" in part else limit) for part in dataset.split(",")]
         child_env = dict(os.environ, PYTHONPATH="/opt/adapters", JEVLIKE_URL="http://127.0.0.1:30000",
-                         JEVLIKE_LOG=f"{out}/judgments.jsonl", JEVLIKE_CONTEXT=str(ctx))
-        t0 = time.time()
-        code = subprocess.run(cmd, cwd="/opt/upstream/sag2", env=child_env).returncode
-        bench = time.time() - t0
+                         JEVLIKE_CONTEXT=str(ctx))
+        runs, code = [], 0
+        for name_, limit_ in specs:
+            suite = f"{out}/run" if len(specs) == 1 else f"{out}/run-{name_}"
+            log = f"{out}/judgments.jsonl" if len(specs) == 1 else f"{out}/judgments-{name_}.jsonl"
+            cmd = [".venv/bin/python", "-W", "ignore", "scripts/run_sag2_benchmark.py", "--mode", "local",
+                   "--reranker", "jevlike", "--model-path", f"/hf/{FP8_REPO}", "--dataset", name_,
+                   "--offset", str(offset), "--limit", str(limit_), "--expansions", str(expansions),
+                   "--concurrency", str(concurrency), "--batch-size", str(batch), "--timeout", "1800"]
+            if dataset_dir:
+                cmd += ["--dataset-dir", dataset_dir, "--cache-dir", f"/tmp/cache-{name}"]
+            cmd += ["--resume", suite] if os.path.isdir(suite) else ["--output-dir", suite]
+            t0 = time.time()
+            rc = subprocess.run(cmd, cwd="/opt/upstream/sag2", env=dict(child_env, JEVLIKE_LOG=log)).returncode
+            code = code or rc
+            metrics_path = f"{suite}/{name_}/metrics.json"
+            metrics = json.load(open(metrics_path)) if os.path.exists(metrics_path) else None
+            runs.append({"dataset": name_, "limit": limit_, "returncode": rc, "bench_wall_s": round(time.time() - t0, 1),
+                         "metrics": metrics and {k: metrics[k] for k in ("question_count", "metrics", "bm25_metrics",
+                                                                         "all_evidence_metrics", "requests", "input_tokens")}})
+            results.commit()
         total = time.time() - t_container
-        env.update(returncode=code, bench_wall_s=round(bench, 1), container_wall_s=round(total, 1),
+        env.update(returncode=code, runs=[{k: v for k, v in r.items() if k != "metrics"} for r in runs],
+                   bench_wall_s=round(sum(r["bench_wall_s"] for r in runs), 1), container_wall_s=round(total, 1),
                    gpu_usd_per_hour=GPU_USD_PER_HOUR.get(GPU), est_usd=round(total / 3600 * GPU_USD_PER_HOUR.get(GPU, 0), 3))
         json.dump(env, open(f"{out}/_env.json", "w"), indent=1)
-        metrics_path = f"{suite}/{dataset}/metrics.json"
-        metrics = json.load(open(metrics_path)) if os.path.exists(metrics_path) else None
-        return {"env": {k: v for k, v in env.items() if k != "freeze"},
-                "metrics": metrics and {k: metrics[k] for k in ("question_count", "metrics", "bm25_metrics",
-                                                                "all_evidence_metrics", "requests", "input_tokens")}}
+        return {"env": {k: v for k, v in env.items() if k != "freeze"}, "runs": runs}
     finally:
         proc.terminate()
         results.commit()
@@ -129,6 +140,6 @@ def run(name: str, dataset: str = "musique", limit: int = 10, offset: int = 0, e
 @app.local_entrypoint()
 def main(name: str, dataset: str = "musique", limit: int = 10, offset: int = 0, expansions: int = 2,
          concurrency: int = 16, batch: int = 64, max_running: int = 64, context_length: int = 16384,
-         server_extra: str = ""):
+         server_extra: str = "", dataset_dir: str = ""):
     print(json.dumps(run.remote(name, dataset, limit, offset, expansions, concurrency, batch, max_running, context_length,
-                                server_extra), indent=1, ensure_ascii=False))
+                                server_extra, dataset_dir), indent=1, ensure_ascii=False))

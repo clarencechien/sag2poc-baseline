@@ -131,6 +131,8 @@ class JevlikeReranker:
         mass = p["A"] + p["B"]
         top = (meta.get("output_top_logprobs") or [[]])[0]
         return {
+            "logp_a": by_id.get(self.letter_ids["A"]),
+            "logp_b": by_id.get(self.letter_ids["B"]),
             "p_yes": p["A"] / mass if mass > 0 else 0.0,
             "option_mass": mass,
             "prompt_tokens": int(meta.get("prompt_tokens") or 0),
@@ -155,6 +157,7 @@ class JevlikeReranker:
             raise ValueError("SGLang returned a different number of results than candidates")
         seconds = time.perf_counter() - started
         rows = [{"index": i, "relevance_score": read["p_yes"], "option_mass": read["option_mass"],
+                 "logp_a": read["logp_a"], "logp_b": read["logp_b"],
                  "prompt_tokens": read["prompt_tokens"], "cached_tokens": read["cached_tokens"],
                  "first_token": read["first_token"]} for i, read in enumerate(reads)]
         usage = {
@@ -171,14 +174,19 @@ class JevlikeReranker:
                 "state_chars": len(query),
                 "seconds": round(seconds, 3),
                 "docs_sha1": [hashlib.sha1(document.encode()).hexdigest() for document in documents],
-                "p_yes": [round(read["p_yes"], 6) for read in reads],
+                "logp_a": [read["logp_a"] for read in reads],
+                "logp_b": [read["logp_b"] for read in reads],
+                "p_yes": [read["p_yes"] for read in reads],
                 "option_mass": [round(read["option_mass"], 6) for read in reads],
                 "prompt_tokens": [read["prompt_tokens"] for read in reads],
                 "cached_tokens": [read["cached_tokens"] for read in reads],
             }
             try:
-                record["original_question"] = json.loads(query)["original_question"]
-                record["evidence_count"] = len(json.loads(query)["previously_retrieved_evidence"])
+                state = json.loads(query)
+                record["original_question"] = state["original_question"]
+                record["evidence_count"] = len(state["previously_retrieved_evidence"])
+                record["evidence_has_scores"] = any(
+                    "previous_jev_score" in item for item in state["previously_retrieved_evidence"])
             except (ValueError, KeyError, TypeError):
                 record["original_question"] = query
                 record["evidence_count"] = 0
