@@ -1,0 +1,84 @@
+{
+ "musique": {
+  "source": "osunlp/HippoRAG_2@5ec05b38deecc3318bb432c69865959c56058990",
+  "source_sha256": {
+   "musique.json": "98ed4e21d3076532f6388d42320fb809599c63a0d8dffca8ece5e41922be6b46",
+   "musique_corpus.json": "73157a03ce3f0b1a5673dd5dc12bb970c24976dbffc688af9eecdd758c97ffcb"
+  },
+  "passages": 11656,
+  "questions": 1000,
+  "gold_not_in_corpus": 0,
+  "types": {
+   "2hop": 518,
+   "3hop": 316,
+   "4hop": 166
+  },
+  "split_sizes": {
+   "dev": 300,
+   "calib": 150,
+   "check": 150,
+   "dev_zh_source": 100,
+   "test": 700
+  },
+  "split_decision": {
+   "n": 300,
+   "whole": {
+    "2hop": 518,
+    "3hop": 316,
+    "4hop": 166
+   },
+   "first_n": {
+    "2hop": 161,
+    "3hop": 87,
+    "4hop": 52
+   },
+   "gap_pp": {
+    "2hop": 1.87,
+    "3hop": -2.6,
+    "4hop": 0.73
+   },
+   "method": "first_n"
+  }
+ },
+ "2wikimultihopqa": {
+  "source": "osunlp/HippoRAG_2@5ec05b38deecc3318bb432c69865959c56058990",
+  "source_sha256": {
+   "2wikimultihopqa.json": "895cba294064df0c3302c76847b1fc08d99b5619f7663dfaa3b65cd780f1cac4",
+   "2wikimultihopqa_corpus.json": "9d6e352952aafb18dab22bf8195039461321a44a949df902ae83bce134ad238a"
+  },
+  "passages": 6119,
+  "questions": 1000,
+  "gold_not_in_corpus": 0,
+  "types": {
+   "compositional": 413,
+   "comparison": 244,
+   "bridge_comparison": 235,
+   "inference": 108
+  },
+  "split_sizes": {
+   "dev": 100
+  },
+  "split_decision": {
+   "n": 100,
+   "whole": {
+    "compositional": 413,
+    "comparison": 244,
+    "bridge_comparison": 235,
+    "inference": 108
+   },
+   "first_n": {
+    "compositional": 45,
+    "comparison": 25,
+    "bridge_comparison": 23,
+    "inference": 7
+   },
+   "gap_pp": {
+    "compositional": 3.7,
+    "comparison": 0.6,
+    "bridge_comparison": -0.5,
+    "inference": -3.8
+   },
+   "method": "first_n"
+  }
+ }
+}
