@@ -5,6 +5,7 @@ AE@k  For one question: 1 if the first k de-duplicated results contain every gol
       Reported as the fraction of questions.
 
 De-duplication keeps the first occurrence of each pid and happens before the cut at k.
+A gold item is normally one pid. It may also be a list of pids, meaning "any one of these passages".
 """
 K_LIST = (1, 2, 5, 10)
 
@@ -13,16 +14,30 @@ def dedupe(items):
     return list(dict.fromkeys(items))
 
 
+def gold_items(gold):
+    """Each gold item is one piece of evidence: a pid, or a list of pids any one of which counts
+    (used when an evidence sentence cannot be pinned to a single passage, see MultiHop-RAG)."""
+    items = []
+    for item in gold:
+        alternatives = frozenset([item] if isinstance(item, str) else item)
+        if not alternatives:
+            raise ValueError("empty gold item")
+        if alternatives not in items:
+            items.append(alternatives)
+    return items
+
+
 def per_question(gold, retrieved, k_list=K_LIST):
-    gold = set(gold)
-    if not gold:
+    items = gold_items(gold)
+    if not items:
         raise ValueError("question has no gold evidence")
     ranked = dedupe(retrieved)
     out = {}
     for k in k_list:
-        found = gold.intersection(ranked[:k])
-        out[f"R@{k}"] = len(found) / len(gold)
-        out[f"AE@{k}"] = float(found == gold)
+        top = set(ranked[:k])
+        found = sum(1 for alternatives in items if alternatives & top)
+        out[f"R@{k}"] = found / len(items)
+        out[f"AE@{k}"] = float(found == len(items))
     return out
 
 

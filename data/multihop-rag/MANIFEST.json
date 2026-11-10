@@ -1,0 +1,29 @@
+{
+ "source": "yixuantt/MultiHopRAG@71ac0d0bd1f951d2d6b70311f7d2ae404e1ffa82",
+ "license": "ODC-BY",
+ "source_sha256": {
+  "MultiHopRAG.json": "03cfb4926461f868684903aadc8024447bdda5bb3f6804741424cce338515bff",
+  "corpus.json": "20b61b5ab84de84a927420c5d265b7ec8d859ae49980699958a787ade9e4d28f"
+ },
+ "articles": 609,
+ "passages": 6440,
+ "max_passage_chars": 1200,
+ "mean_passage_chars": 975.9,
+ "questions_excluding_null": 2255,
+ "null_query_excluded": 301,
+ "types": {
+  "inference_query": 816,
+  "comparison_query": 856,
+  "temporal_query": 583
+ },
+ "sample_seed": 20261110,
+ "sample_quota": {
+  "inference_query": 108,
+  "comparison_query": 114,
+  "temporal_query": 78
+ },
+ "evidence_total": 6084,
+ "evidence_not_matched": 0,
+ "evidence_not_matched_share": 0.0,
+ "questions_with_unmatched_evidence": 0
+}

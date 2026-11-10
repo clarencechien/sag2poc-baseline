@@ -56,6 +56,8 @@ image = (
         "--datasets musique 2wikimultihopqa --output-dir /tmp/index-only",
     )
     .add_local_dir("adapters", "/opt/adapters")
+    # S4: MultiHop-RAG in the HippoRAG-style layout (tools/convert_multihop_rag.py writes it)
+    .add_local_dir("build/mhr_upstream", "/opt/datasets/multihop-rag")
 )
 
 

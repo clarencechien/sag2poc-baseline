@@ -2,6 +2,7 @@
 
 data/<dataset>/corpus.jsonl     {"pid", "title", "text"}
 data/<dataset>/questions.jsonl  {"qid", "question", "gold_pids", "type"}
+                                (a gold_pids entry is a pid, or a list of pids meaning "any one of these")
 data/<dataset>/splits.json      {"<split>": [qid, ...]}
 
 A *run* file is JSONL with one line per question: {"qid", "retrieved": [pid, ...]} in rank order.
