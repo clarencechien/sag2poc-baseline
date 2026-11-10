@@ -1,0 +1,42 @@
+diff --git a/sag2/scripts/local_reranker.py b/sag2/scripts/local_reranker.py
+index 21bc6fd..5807edc 100644
+--- a/sag2/scripts/local_reranker.py
++++ b/sag2/scripts/local_reranker.py
+@@ -253,3 +253,12 @@ class LocalScorer:
+             "batches": [detail],
+             **response["usage"],
+         }
++
++
++def load_reranker(path: Path, model: str, backend: str, device: str, batch_size: int):
++    """Backend factory. `jevlike` reads option-letter probabilities from an SGLang server."""
++    if model == "jevlike":
++        from jevlike_backend import JevlikeReranker
++
++        return JevlikeReranker(path, batch_size=batch_size)
++    return LocalReranker(path, model, backend, device, batch_size)
+diff --git a/sag2/scripts/run_sag2_benchmark.py b/sag2/scripts/run_sag2_benchmark.py
+index 2166b5d..b802ea0 100644
+--- a/sag2/scripts/run_sag2_benchmark.py
++++ b/sag2/scripts/run_sag2_benchmark.py
+@@ -54,7 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
+     parser.add_argument(
+         "--model-path", type=Path, help="Local reranker directory; no downloads at runtime"
+     )
+-    parser.add_argument("--reranker", choices=["jina", "qwen"], default="qwen")
++    parser.add_argument("--reranker", choices=["jina", "qwen", "jevlike"], default="qwen")
+     parser.add_argument("--backend", choices=["transformers", "mlx"], default="transformers")
+     parser.add_argument("--device", choices=["auto", "cpu", "cuda", "mps"], default="auto")
+     parser.add_argument("--batch-size", type=int, default=4, help="Local Qwen inference batch size")
+@@ -556,9 +556,9 @@ async def run(args: argparse.Namespace) -> None:
+         raise ValueError("请设置 JEV_API_KEY（项目 .env、--env-file 或环境变量）")
+     local_model = None
+     if args.mode == "local" and not args.index_only:
+-        from local_reranker import LocalReranker
++        from local_reranker import load_reranker
+ 
+-        local_model = LocalReranker(
++        local_model = load_reranker(
+             args.model_path, args.reranker, args.backend, args.device, args.batch_size
+         )
+         print(
