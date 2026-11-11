@@ -1,0 +1,23 @@
+{
+ "materialise": {
+  "documents": 511962,
+  "unzip_seconds": 45.1,
+  "zip_sha256": "9d1174928696ad08bc15f3f104739519de633c1605a4ec2034e0e3c0087bc5cd"
+ },
+ "index_copy_seconds": 6.4,
+ "server_start_s": 258.5,
+ "probe": {
+  "returncode": 0,
+  "questions": 6,
+  "wall_s": 158.2,
+  "projected_usd_total": 1.03,
+  "total_questions": 60
+ },
+ "full": {
+  "returncode": 0,
+  "wall_s": 1287.9
+ },
+ "container_wall_s": 1758.6,
+ "est_usd": 0.953,
+ "context_length": 32768
+}

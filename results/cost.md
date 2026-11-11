@@ -24,3 +24,18 @@ L40S 以 $1.95／小時估算（`modal_baseline.py` 用容器牆鐘時間換算�
 - S3 和 S4 是同時在兩個 L40S 容器上跑的，總花費和依序跑相同。
 - 所有執行結束後確認過 `modal app list`：`sag2poc-a-baseline` 的 app 都已停止。帳號裡另有一個 `dad-breeze`（deployed，0 個 task），不是這個專案的，沒有動它。
 - Volume：結果在 `sag2poc-a-results`（四次執行的完整輸出，含每次判斷的請求與回應）；權重讀的是 jevlike 既有的 `gb10-decide-hf`，沒有寫入。
+
+## 歸因補測（`docs/handoff-b0-attribution.md`，2026-11-11）
+
+| 項目 | 上限 | 執行 | 容器秒數 | 估算花費 | 備註 |
+|---|---:|---|---:|---:|---|
+| C1 | $2 | `c1-zh`：dev-zh 繁中、簡中各 100 題，兩輪擴展，同一個容器 | 1,750 | $0.95 | 冷啟動 142 秒；每 100 題約 $0.43 |
+| C2 第 0 步 | — | 只用 CPU（本機） | 0 | $0 | |
+| C2 第 1 步，CPU | $6（C2 合計） | `prep_enterprise`：建上游索引、BM25 對照，32 核、64 GB | 約 2,960 | 約 $1.7 | **粗估**：我對 Modal 的 CPU 與記憶體單價沒有把握 |
+| C2 第 1 步，GPU | | `c2-enterprise`：60 題，兩輪擴展，context 32,768 | 1,759 | $0.95 | 先跑 6 題估成本（預估 $1.03）才繼續 |
+| **補測合計** | $8 | | | **約 $3.6** | |
+
+- 兩次送出時命令列參數撞名（`ctx`），都在本機就失敗，沒有啟動容器。
+- 加上 Session A 先前的 $3.98，這一側合計約 $7.6。全案（含 Session B 自己估的 $25.54）約 $33，上限 $60。**都沒有和帳單核對。**
+- 補測結束後 `modal app list` 裡 `sag2poc-a-baseline` 的 app 都已停止。
+- Volume `sag2poc-a-results` 多了 `enterprise/`（約 3.3 GB）。Session B 的 Volume `taguri-b-results` 只讀取、沒有寫入。
