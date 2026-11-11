@@ -232,7 +232,7 @@ def prep_enterprise(workers: int = 30):
 @app.function(image=image, gpu=GPU, cpu=32, memory=65536, volumes={"/hf": weights, "/results": results},
               timeout=60 * 60 * 5)
 def enterprise_b0(name: str = "c2-enterprise", types: str = "project_related,completeness", probe: int = 5,
-                  max_usd: float = 4.0, concurrency: int = 8, ctx: int = 32768, max_running: int = 64):
+                  max_usd: float = 4.0, concurrency: int = 8, context_length: int = 32768, max_running: int = 64):
     """C2 step 1, GPU: B0 on the selected question types. Runs `probe` questions first, projects the cost,
     and only continues when the projection stays under max_usd."""
     import shutil
@@ -242,12 +242,12 @@ def enterprise_b0(name: str = "c2-enterprise", types: str = "project_related,com
     t0 = time.time()
     shutil.copytree(f"{ERB_VOL}/idx", ERB_IDX, dirs_exist_ok=True)
     info["index_copy_seconds"] = round(time.time() - t0, 1)
-    proc, t_start = start_server(ctx=ctx, max_running=max_running)
+    proc, t_start = start_server(ctx=context_length, max_running=max_running)
     info["server_start_s"] = round(t_start, 1)
     out = f"/results/{name}"
     os.makedirs(out, exist_ok=True)
     child_env = dict(os.environ, PYTHONPATH="/opt/adapters", JEVLIKE_URL="http://127.0.0.1:30000",
-                     JEVLIKE_CONTEXT=str(ctx), JEVLIKE_LOG=f"{out}/judgments.jsonl")
+                     JEVLIKE_CONTEXT=str(context_length), JEVLIKE_LOG=f"{out}/judgments.jsonl")
     base = [".venv/bin/python", "-W", "ignore", "/opt/tools/enterprise_b0.py", "--dataset-dir", ERB_DATA,
             "--index-summary", f"{ERB_IDX}/out/summary.json", "--types", *types.split(","),
             "--model-path", f"/hf/{FP8_REPO}", "--concurrency", str(concurrency), "--out", out]
@@ -272,7 +272,7 @@ def enterprise_b0(name: str = "c2-enterprise", types: str = "project_related,com
             info["stopped"] = "probe failed" if code else f"projected ${projected:.2f} exceeds ${max_usd}"
         wall = time.time() - t_container
         info.update(container_wall_s=round(wall, 1), est_usd=round(wall / 3600 * GPU_USD_PER_HOUR.get(GPU, 0), 3),
-                    context_length=ctx)
+                    context_length=context_length)
         json.dump(info, open(f"{out}/_env.json", "w"), indent=1)
         return info
     finally:
