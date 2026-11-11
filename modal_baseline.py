@@ -229,7 +229,7 @@ def prep_enterprise(workers: int = 30):
     return info
 
 
-@app.function(image=image, gpu=GPU, cpu=16, memory=65536, volumes={"/hf": weights, "/results": results},
+@app.function(image=image, gpu=GPU, cpu=32, memory=65536, volumes={"/hf": weights, "/results": results},
               timeout=60 * 60 * 5)
 def enterprise_b0(name: str = "c2-enterprise", types: str = "project_related,completeness", probe: int = 5,
                   max_usd: float = 4.0, concurrency: int = 8, ctx: int = 32768, max_running: int = 64):

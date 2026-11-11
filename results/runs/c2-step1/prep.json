@@ -1,0 +1,22 @@
+{
+ "materialise": {
+  "documents": 511962,
+  "unzip_seconds": 64.9,
+  "zip_sha256": "9d1174928696ad08bc15f3f104739519de633c1605a4ec2034e0e3c0087bc5cd"
+ },
+ "build_seconds": 1614.8,
+ "index": {
+  "indexed_documents": 511962,
+  "index_chunks": 1472948,
+  "observed_max_chunk_chars": 14711,
+  "index_bytes": 1968140288
+ },
+ "bm25_seconds_incl_lexical_statistics": 1226.2,
+ "parity": {
+  "questions": 470,
+  "same_top10_and_order": 0,
+  "same_top10_set": 0,
+  "bm25_r10_ours": 69.01916582235731,
+  "bm25_r10_upstream_record": 67.82235731171902
+ }
+}
