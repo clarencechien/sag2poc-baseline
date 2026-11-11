@@ -5,7 +5,7 @@ Run inside the upstream environment:
   cd vendor/SAG-Benchmark/sag2 && uv run python ../../../tools/run_upstream_bm25.py \
       --dataset musique --out ../../../results/raw/bm25_musique.jsonl
 
-Writes a run file {"qid", "retrieved": [pid, ...]} with pid = 0-based corpus row (upstream document_id − 1).
+Writes a run file {"qid", "retrieved": [pid, ...]} with pid = 0-based corpus row.
 """
 import argparse
 import json
@@ -31,13 +31,18 @@ def main():
     loader = DatasetLoader(args.dataset, str(args.dataset_dir))
     index = CorpusIndex(args.cache_dir / f"{args.dataset}.sqlite", loader.load_corpus(),
                         corpus_fingerprint(args.dataset_dir / f"{args.dataset}_corpus.json"), DEFAULT_CHUNK_CHARS)
+    # pid = 0-based row of the passage in the corpus file. Map through the passage text, not the index's own
+    # document number: the index drops exact duplicate passages, which shifts its numbering.
+    pid_by_text = {}
+    for i, row in enumerate(loader.load_corpus()):
+        pid_by_text.setdefault(f"{row['title'].strip()}\n{row['text']}", str(i))
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8") as stream:
         for record in loader.get_question_records():
             expression = index.match_query(record["question"])
             hits = index.retrieve(expression, set(), args.candidate_k) if expression else []
-            documents = list(dict.fromkeys(hit["document_id"] for hit in hits))[: args.top_k]
-            stream.write(json.dumps({"qid": record["id"], "retrieved": [str(d - 1) for d in documents]}) + "\n")
+            documents = list(dict.fromkeys(pid_by_text[hit["full_doc"]] for hit in hits))[: args.top_k]
+            stream.write(json.dumps({"qid": record["id"], "retrieved": documents}) + "\n")
     index.close()
 
 

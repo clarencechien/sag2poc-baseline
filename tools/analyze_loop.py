@@ -49,6 +49,8 @@ def main():
     parser.add_argument("--usd-per-hour", type=float, default=1.95)
     parser.add_argument("--compare", nargs="*", default=[])
     parser.add_argument("--stage-compare", nargs="*", default=[], help="h0=<ref> h1=<ref>")
+    parser.add_argument("--data-root", type=Path, default=ROOT / "data")
+    parser.add_argument("--ref-root", type=Path, default=ROOT / "reference")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
@@ -62,21 +64,24 @@ def main():
                         corpus_fingerprint(dataset_dir / f"{upstream_name}_corpus.json"), DEFAULT_CHUNK_CHARS)
     idf = index.diversity_idf
     db = sqlite3.connect(args.index)
-    chunks = {cid: {"id": cid, "document_id": doc, "content": content, "title": title}
-              for cid, doc, title, content in db.execute("SELECT id, document_id, title, content FROM chunks")}
+    # pid = 0-based row in the corpus file, mapped through the passage text (the index drops exact duplicates,
+    # so its own document numbers can be shifted).
+    pid_by_full_doc = {}
+    for i, row in enumerate(DatasetLoader(upstream_name, str(dataset_dir)).load_corpus()):
+        pid_by_full_doc.setdefault(f"{row['title'].strip()}\n{row['text']}", str(i))
+    chunks = {cid: {"id": cid, "document_id": doc, "content": content, "title": title, "pid": pid_by_full_doc[full]}
+              for cid, doc, title, content, full in db.execute("SELECT id, document_id, title, content, full_doc FROM chunks")}
     by_sha = {hashlib.sha1(f"{c['title']}\n{c['content']}".encode()).hexdigest(): c for c in chunks.values()}
 
-    questions = load_questions(args.dataset, ROOT / "data")
-    qids = load_split(args.dataset, args.split, ROOT / "data")
+    questions = load_questions(args.dataset, args.data_root)
+    qids = load_split(args.dataset, args.split, args.data_root)
     by_question = {questions[q]["question"]: q for q in qids}
     details = {d["dataset_sample_id"]: d for d in rows(args.suite / "details.jsonl")}
     if set(details) != set(qids):
         raise ValueError(f"run covers {len(details)} questions, split has {len(qids)}")
 
-    pid_by_full_doc = {full: str(doc - 1) for doc, full in db.execute("SELECT DISTINCT document_id, full_doc FROM chunks")}
-
     def docs_top10(ranked_chunks):
-        return [str(d - 1) for d in dict.fromkeys(c["document_id"] for c in ranked_chunks)][:10]
+        return list(dict.fromkeys(c["pid"] for c in ranked_chunks))[:10]
 
     # ---- final and per-stage results rebuilt from the trace -------------------------------------------------------
     runs = {"final": {}, "h0": {}, "h1": {}, "h2": {}}
@@ -124,7 +129,7 @@ def main():
                 missing_logp += 1
                 la = la if la is not None else -50.0
                 lb = lb if lb is not None else -50.0
-            pid = str(chunk["document_id"] - 1)
+            pid = chunk["pid"]
             calib[stage]["gold" if pid in gold_sets[qid] else "non"].append(p)
             latest[qid][chunk["id"]] = (la - lb, chunk)
     calibration = {}
@@ -175,7 +180,7 @@ def main():
         "aggregate": {name: aggregate(table, qids) for name, table in scores.items()},
         "calibration": calibration, "usage": usage, "paired": {}, "stage_paired": {}, "by_type": {},
     }
-    refs = ROOT / "reference" / args.dataset
+    refs = args.ref_root / args.dataset
     for method in args.compare:
         ref = load_scores(refs / f"{method}.jsonl")
         out["paired"][method] = {"reference": aggregate(ref, qids),
